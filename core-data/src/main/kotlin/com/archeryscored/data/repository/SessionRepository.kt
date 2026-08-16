@@ -1,5 +1,6 @@
 package com.archeryscored.data.repository
 
+import android.net.Uri
 import com.archeryscored.data.db.entity.ArrowPointEntity
 import com.archeryscored.data.db.entity.EndEntity
 import com.archeryscored.data.db.entity.SessionEntity
@@ -17,6 +18,7 @@ interface SessionRepository {
 
     fun getEndsForSession(sessionId: Long): Flow<List<EndEntity>>
     fun newPhotoFile(sessionId: Long, endNumber: Int): File
+    fun importUploadedPhoto(sourceUri: Uri, destFile: File)
     suspend fun createEnd(sessionId: Long, endNumber: Int, photoFile: File, capturedAt: Instant): Long
     suspend fun updateCalibration(endId: Long, centerXPx: Float, centerYPx: Float, radiusPx: Float, confirmed: Boolean)
 

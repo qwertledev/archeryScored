@@ -39,6 +39,12 @@ A session with no `endedAt` timestamp is "in progress" and can always be reopene
 more ends; tapping **Finish session** on the Session screen (with a confirmation dialog) sets that
 timestamp and hides the Capture/Finish actions from then on, leaving the session as a read-only record.
 
+On `Capture`, an end's photo can come from either the camera or the system Photo Picker (an "upload"
+button next to the shutter FAB, and the only option shown if camera permission isn't granted) — both
+paths converge on the same `createEnd`/auto-detect/Review pipeline. Uploaded images are decoded and
+re-encoded as an upright JPEG (EXIF orientation applied) before saving, since Bitmap/OpenCV don't
+honor EXIF rotation on their own and calibration assumes pixel coordinates match what's displayed.
+
 ## Project structure
 
 ```

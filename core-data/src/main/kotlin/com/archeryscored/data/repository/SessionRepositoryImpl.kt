@@ -1,5 +1,6 @@
 package com.archeryscored.data.repository
 
+import android.net.Uri
 import com.archeryscored.data.db.dao.ArrowPointDao
 import com.archeryscored.data.db.dao.EndDao
 import com.archeryscored.data.db.dao.SessionDao
@@ -50,6 +51,10 @@ class SessionRepositoryImpl(
 
     override fun newPhotoFile(sessionId: Long, endNumber: Int): File =
         photoStorage.fileForEnd(sessionId, endNumber, Clock.System.now().toEpochMilliseconds())
+
+    override fun importUploadedPhoto(sourceUri: Uri, destFile: File) {
+        photoStorage.importUploadedPhoto(sourceUri, destFile)
+    }
 
     override suspend fun createEnd(sessionId: Long, endNumber: Int, photoFile: File, capturedAt: Instant): Long =
         endDao.insert(

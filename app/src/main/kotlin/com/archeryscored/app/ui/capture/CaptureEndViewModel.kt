@@ -1,6 +1,7 @@
 package com.archeryscored.app.ui.capture
 
 import android.graphics.BitmapFactory
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -54,12 +55,31 @@ class CaptureEndViewModel @Inject constructor(
     fun onPhotoSaved(file: File) {
         viewModelScope.launch {
             _isSaving.value = true
-            val endNumber = endCount.value + 1
-            val endId = repository.createEnd(sessionId, endNumber, file, Clock.System.now())
-            runCatching { runAutoDetection(endId, file) }
+            persistEnd(file)
             _isSaving.value = false
-            _navigateToReview.value = endId
         }
+    }
+
+    /** Same end-creation pipeline as a camera capture, just sourced from a gallery-picked image. */
+    fun onPhotoUploaded(sourceUri: Uri) {
+        viewModelScope.launch {
+            _isSaving.value = true
+            val file = newPhotoFile()
+            val imported = runCatching {
+                withContext(Dispatchers.IO) { repository.importUploadedPhoto(sourceUri, file) }
+            }
+            if (imported.isSuccess) {
+                persistEnd(file)
+            }
+            _isSaving.value = false
+        }
+    }
+
+    private suspend fun persistEnd(file: File) {
+        val endNumber = endCount.value + 1
+        val endId = repository.createEnd(sessionId, endNumber, file, Clock.System.now())
+        runCatching { runAutoDetection(endId, file) }
+        _navigateToReview.value = endId
     }
 
     /**
