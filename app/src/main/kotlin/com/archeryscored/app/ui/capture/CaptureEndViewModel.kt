@@ -47,6 +47,9 @@ class CaptureEndViewModel @Inject constructor(
     private val _navigateToReview = MutableStateFlow<Long?>(null)
     val navigateToReview: StateFlow<Long?> = _navigateToReview.asStateFlow()
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     fun newPhotoFile(): File {
         val endNumber = endCount.value + 1
         return repository.newPhotoFile(sessionId, endNumber)
@@ -55,7 +58,8 @@ class CaptureEndViewModel @Inject constructor(
     fun onPhotoSaved(file: File) {
         viewModelScope.launch {
             _isSaving.value = true
-            persistEnd(file)
+            runCatching { persistEnd(file) }
+                .onFailure { _errorMessage.value = "Could not save that photo. Try again." }
             _isSaving.value = false
         }
     }
@@ -64,15 +68,17 @@ class CaptureEndViewModel @Inject constructor(
     fun onPhotoUploaded(sourceUri: Uri) {
         viewModelScope.launch {
             _isSaving.value = true
-            val file = newPhotoFile()
-            val imported = runCatching {
+            runCatching {
+                val file = newPhotoFile()
                 withContext(Dispatchers.IO) { repository.importUploadedPhoto(sourceUri, file) }
-            }
-            if (imported.isSuccess) {
                 persistEnd(file)
-            }
+            }.onFailure { _errorMessage.value = "Could not use that photo. Try a different one." }
             _isSaving.value = false
         }
+    }
+
+    fun consumeErrorMessage() {
+        _errorMessage.value = null
     }
 
     private suspend fun persistEnd(file: File) {

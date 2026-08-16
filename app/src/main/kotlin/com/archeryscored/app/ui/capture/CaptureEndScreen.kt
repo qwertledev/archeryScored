@@ -30,6 +30,8 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -62,11 +64,20 @@ fun CaptureEndScreen(
     val endCount by viewModel.endCount.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
     val navigateToReview by viewModel.navigateToReview.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(navigateToReview) {
         navigateToReview?.let { endId ->
             onEndCaptured(viewModel.sessionId, endId)
             viewModel.consumeNavigation()
+        }
+    }
+
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.consumeErrorMessage()
         }
     }
 
@@ -99,7 +110,8 @@ fun CaptureEndScreen(
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             if (!hasCameraPermission) {
