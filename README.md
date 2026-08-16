@@ -39,12 +39,23 @@ no camera/permission touched yet) → one of:
 
 - **Take a picture** → `Capture` (camera only) → `Review` (correct detected/tapped arrows, **Save end**)
 - **Use a picture** → system Photo Picker, straight into the same auto-detect/`Review` pipeline
+- **Tap on a target** → `Diagram Entry` (a blank rendered target face, tap where each arrow landed) →
+  saves straight back to `Session` - no photo, but a real position, so it plots on the grouping chart
 - **Enter scores manually** → `Manual Entry` (tap a value per arrow, Miss through X, no photo/position
   at all) → saves straight back to `Session`, skipping Review since there's nothing to correct
 
-All three converge back on `Session`. A manually-entered end has no photo and no arrow position - it
-counts toward the total score and the progression chart, but is skipped by the grouping chart (which
-plots position, not just score) since there's no position to plot.
+All four converge back on `Session`. Manually-entered (numeric) ends have no photo and no arrow
+position - they count toward the total score and the progression chart, but are skipped by the
+grouping chart (which plots position, not just score) since there's no position to plot. Diagram-tap
+ends *do* have a position (relative to the diagram's own fixed circle) and do show up there.
+
+On `Review`, the calibration circle is never a separate "step" - it's always visible from the moment
+the photo loads (auto-detected, previously saved, or a computed default centered on the photo), with
+two large icon handles: move (center) and resize (edge). Dragging either live-rescoring every placed
+arrow, since score depends on distance from center relative to radius. "Reset circle" snaps back to
+the computed default. Arrow marks themselves are large filled circles (not just text) and render
+offset to the left of the actual touch point while being placed/dragged, specifically so the mark is
+never hidden under the finger placing it - the offset position is what's recorded, not the raw touch.
 
 A session with no `endedAt` timestamp is "in progress" and can always be reopened from `Home` to add
 more ends; tapping **Finish session** on the Session screen (with a confirmation dialog) sets that
@@ -101,8 +112,6 @@ new detection code.
 
 ## Known simplifications vs. a v2
 
-- Manual calibration is a two-tap flow (tap center, tap edge) rather than draggable handles — chosen
-  for lower gesture-conflict risk given this was built without on-device testing.
 - Multi-spot faces (3-spot) use the same single-circle detection/calibration as single-spot faces;
   the UI doesn't yet distinguish separate spots within one end.
 - No charting library was added; the grouping and progression charts are hand-rolled Compose `Canvas`,

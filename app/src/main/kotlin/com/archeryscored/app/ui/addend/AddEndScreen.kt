@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Dialpad
+import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Card
@@ -49,6 +50,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 fun AddEndScreen(
     onTakePicture: (sessionId: Long) -> Unit,
     onEnterManually: (sessionId: Long) -> Unit,
+    onEnterViaDiagram: (sessionId: Long) -> Unit,
     onEndCaptured: (sessionId: Long, endId: Long) -> Unit,
     onBack: () -> Unit,
     viewModel: AddEndViewModel = hiltViewModel()
@@ -121,9 +123,15 @@ fun AddEndScreen(
                 }
             )
             ChooserCard(
+                icon = Icons.Filled.GpsFixed,
+                title = "Tap on a target",
+                subtitle = "Mark where each arrow landed on a blank target face - no photo",
+                onClick = { onEnterViaDiagram(viewModel.sessionId) }
+            )
+            ChooserCard(
                 icon = Icons.Filled.Dialpad,
                 title = "Enter scores manually",
-                subtitle = "Tap a value per arrow, from Miss to X - no photo",
+                subtitle = "Tap a value per arrow, from Miss to X - no photo or position",
                 onClick = { onEnterManually(viewModel.sessionId) }
             )
         }

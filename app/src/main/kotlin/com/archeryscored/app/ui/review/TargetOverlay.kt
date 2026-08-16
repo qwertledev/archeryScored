@@ -3,6 +3,8 @@ package com.archeryscored.app.ui.review
 import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -12,8 +14,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.OpenWith
+import androidx.compose.material.icons.filled.ZoomOutMap
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,20 +26,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.archeryscored.app.ui.common.ArrowMarker
+import com.archeryscored.app.ui.common.MarkerPoint
+import com.archeryscored.app.ui.common.touchOffsetPx
 import kotlin.math.roundToInt
-
-enum class OverlayMode { TAP_CENTER, TAP_EDGE, PLACE_POINTS }
+import kotlin.math.sqrt
 
 data class OverlayPoint(
     val id: Long,
@@ -46,20 +52,22 @@ data class OverlayPoint(
     val confirmed: Boolean
 )
 
+private val HandleSize = 44.dp
+
 /**
- * Displays the captured target photo with a draggable/tappable correction layer on top:
- * two calibration taps (center, then edge) establish ring geometry, then taps add arrows,
- * drags move them, and long-presses delete them. All coordinates in callbacks are in the
- * original bitmap's pixel space, independent of how the image is scaled on screen.
+ * Displays the captured target photo with a calibration circle - always visible, always draggable
+ * via two large handles (move at center, resize at the top edge) - plus tap-to-add/drag/long-press
+ * arrow marks. There's no separate "calibration mode": the circle starts at [center]/[radiusPx]
+ * (auto-detected, previously saved, or a caller-supplied default) and can be adjusted at any time.
  */
 @Composable
 fun TargetOverlay(
     bitmap: Bitmap,
-    mode: OverlayMode,
-    center: Offset?,
-    radiusPx: Float?,
+    center: Offset,
+    radiusPx: Float,
     points: List<OverlayPoint>,
-    onCalibrationTap: (Offset) -> Unit,
+    onCenterChange: (Offset) -> Unit,
+    onRadiusChange: (Float) -> Unit,
     onAddPoint: (Offset) -> Unit,
     onMovePoint: (id: Long, newPosition: Offset) -> Unit,
     onDeletePoint: (id: Long) -> Unit,
@@ -73,15 +81,16 @@ fun TargetOverlay(
         val boxWidthPx = with(density) { maxWidth.toPx() }
         val scale = if (bitmapWidth > 0f) boxWidthPx / bitmapWidth else 1f
         val boxHeightDp = with(density) { (bitmapHeight * scale).toDp() }
+        val addOffsetPx = touchOffsetPx(scale, density)
 
         Box(
             Modifier
                 .fillMaxWidth()
                 .height(boxHeightDp)
-                .pointerInput(mode) {
+                .pointerInput(points.size, center, radiusPx) {
                     detectTapGestures(onTap = { offset ->
-                        val pxOffset = Offset(offset.x / scale, offset.y / scale)
-                        if (mode == OverlayMode.PLACE_POINTS) onAddPoint(pxOffset) else onCalibrationTap(pxOffset)
+                        val bitmapOffset = Offset(offset.x / scale + addOffsetPx, offset.y / scale)
+                        onAddPoint(bitmapOffset)
                     })
                 }
         ) {
@@ -92,20 +101,37 @@ fun TargetOverlay(
                 contentScale = ContentScale.FillBounds
             )
 
-            if (center != null && radiusPx != null) {
-                Canvas(Modifier.fillMaxWidth().height(boxHeightDp)) {
-                    drawCircle(
-                        color = Color(0xFFFFD54F),
-                        radius = radiusPx * scale,
-                        center = Offset(center.x * scale, center.y * scale),
-                        style = Stroke(width = 3f)
-                    )
-                }
+            Canvas(Modifier.fillMaxWidth().height(boxHeightDp)) {
+                drawCircle(
+                    color = Color(0xFFFFD54F),
+                    radius = radiusPx * scale,
+                    center = Offset(center.x * scale, center.y * scale),
+                    style = Stroke(width = 4f)
+                )
             }
 
+            CalibrationHandle(
+                positionPx = center,
+                scale = scale,
+                icon = Icons.Filled.OpenWith,
+                contentDescription = "Move calibration circle",
+                onDrag = onCenterChange
+            )
+            CalibrationHandle(
+                positionPx = Offset(center.x, center.y - radiusPx),
+                scale = scale,
+                icon = Icons.Filled.ZoomOutMap,
+                contentDescription = "Resize calibration circle",
+                onDrag = { newPos ->
+                    val dx = newPos.x - center.x
+                    val dy = newPos.y - center.y
+                    onRadiusChange(sqrt(dx * dx + dy * dy))
+                }
+            )
+
             points.forEach { point ->
-                ArrowPointMarker(
-                    point = point,
+                ArrowMarker(
+                    point = MarkerPoint(point.id, point.xPx, point.yPx, point.score, point.isX, point.confirmed),
                     scale = scale,
                     onDrag = { newPxOffset -> onMovePoint(point.id, newPxOffset) },
                     onDelete = { onDeletePoint(point.id) }
@@ -116,32 +142,31 @@ fun TargetOverlay(
 }
 
 @Composable
-private fun ArrowPointMarker(
-    point: OverlayPoint,
+private fun CalibrationHandle(
+    positionPx: Offset,
     scale: Float,
-    onDrag: (Offset) -> Unit,
-    onDelete: () -> Unit
+    icon: ImageVector,
+    contentDescription: String,
+    onDrag: (Offset) -> Unit
 ) {
     val density = LocalDensity.current
-    var dragPositionPx by remember(point.id) { mutableStateOf(Offset(point.xPx, point.yPx)) }
+    var dragPositionPx by remember { mutableStateOf(positionPx) }
+    LaunchedEffect(positionPx) { dragPositionPx = positionPx }
 
-    LaunchedEffect(point.xPx, point.yPx) {
-        dragPositionPx = Offset(point.xPx, point.yPx)
-    }
-
-    val markerSizeDp = 28.dp
-    val markerSizePx = with(density) { markerSizeDp.toPx() }
+    val handleSizePx = with(density) { HandleSize.toPx() }
     val offset = IntOffset(
-        (dragPositionPx.x * scale - markerSizePx / 2).roundToInt(),
-        (dragPositionPx.y * scale - markerSizePx / 2).roundToInt()
+        (dragPositionPx.x * scale - handleSizePx / 2).roundToInt(),
+        (dragPositionPx.y * scale - handleSizePx / 2).roundToInt()
     )
 
     Box(
         modifier = Modifier
             .offset { offset }
-            .size(markerSizeDp)
-            .clip(CircleShape)
-            .pointerInput(point.id) {
+            .size(HandleSize)
+            .shadow(4.dp, CircleShape)
+            .background(Color(0xFF1B4F72), CircleShape)
+            .border(2.dp, Color.White, CircleShape)
+            .pointerInput(Unit) {
                 detectDragGestures(
                     onDrag = { change, dragAmount ->
                         change.consume()
@@ -152,17 +177,9 @@ private fun ArrowPointMarker(
                         onDrag(dragPositionPx)
                     }
                 )
-            }
-            .pointerInput(point.id) {
-                detectTapGestures(onLongPress = { onDelete() })
             },
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = if (point.isX) "X" else point.score.toString(),
-            color = if (point.confirmed) Color(0xFF4CAF50) else Color(0xFFE53935),
-            fontSize = 14.sp,
-            style = MaterialTheme.typography.labelLarge
-        )
+        Icon(icon, contentDescription = contentDescription, tint = Color.White)
     }
 }

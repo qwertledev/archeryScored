@@ -8,17 +8,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import com.archeryscored.app.ui.common.colorFor
 import com.archeryscored.model.Point2D
-import com.archeryscored.model.RingColor
 import com.archeryscored.model.RingConfig
-
-private val ringColorMap = mapOf(
-    RingColor.GOLD to Color(0xFFF4C430),
-    RingColor.RED to Color(0xFFD32F2F),
-    RingColor.BLUE to Color(0xFF1976D2),
-    RingColor.BLACK to Color(0xFF212121),
-    RingColor.WHITE to Color(0xFFF5F5F5)
-)
 
 /** Draws a simplified target face from [ringConfig] and overlays every session arrow position (normalized). */
 @Composable
@@ -34,7 +26,7 @@ fun GroupingChart(
 
         ringConfig.sortedBoundaries.sortedByDescending { it.outerRadiusRatio }.forEach { boundary ->
             drawCircle(
-                color = ringColorMap[boundary.colorHint] ?: Color.Gray,
+                color = colorFor(boundary.colorHint),
                 radius = radiusPx * boundary.outerRadiusRatio,
                 center = center
             )

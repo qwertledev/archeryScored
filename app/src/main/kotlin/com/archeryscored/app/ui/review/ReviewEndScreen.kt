@@ -56,24 +56,34 @@ fun ReviewEndScreen(
             BitmapFactory.decodeFile(File(context.filesDir, photoPath).absolutePath)
         }
 
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            InstructionBanner(mode = uiState.mode)
+        LaunchedEffect(bitmap) {
+            bitmap?.let { viewModel.setDefaultCircleIfNeeded(it.width, it.height) }
+        }
 
-            if (bitmap != null) {
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            InstructionBanner()
+
+            val center = uiState.centerPx
+            val radius = uiState.radiusPx
+            if (bitmap != null && center != null && radius != null) {
                 TargetOverlay(
                     bitmap = bitmap,
-                    mode = uiState.mode,
-                    center = uiState.centerPx,
-                    radiusPx = uiState.radiusPx,
+                    center = center,
+                    radiusPx = radius,
                     points = uiState.points.map {
                         OverlayPoint(it.id, it.xPx, it.yPx, it.score, it.isX, confirmed = it.source != PointSource.AUTO_DETECTED)
                     },
-                    onCalibrationTap = viewModel::onCalibrationTap,
+                    onCenterChange = viewModel::onCenterChange,
+                    onRadiusChange = viewModel::onRadiusChange,
                     onAddPoint = viewModel::onAddPoint,
                     onMovePoint = viewModel::onMovePoint,
                     onDeletePoint = viewModel::onDeletePoint,
                     modifier = Modifier.weight(1f)
                 )
+            } else {
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             }
 
             val totalScore = uiState.points.sumOf { it.score }
@@ -87,13 +97,12 @@ fun ReviewEndScreen(
                     Text("${uiState.points.size} arrow${if (uiState.points.size == 1) "" else "s"}", style = MaterialTheme.typography.bodyMedium)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (uiState.mode == OverlayMode.PLACE_POINTS) {
-                        OutlinedButton(onClick = viewModel::onRecalibrate) { Text("Recalibrate") }
+                    OutlinedButton(onClick = {
+                        bitmap?.let { viewModel.resetCircle(it.width, it.height) }
+                    }) {
+                        Text("Reset circle")
                     }
-                    Button(
-                        onClick = viewModel::save,
-                        enabled = uiState.mode == OverlayMode.PLACE_POINTS
-                    ) {
+                    Button(onClick = viewModel::save, enabled = uiState.hasCircle) {
                         Text("Save end")
                     }
                 }
@@ -103,13 +112,12 @@ fun ReviewEndScreen(
 }
 
 @Composable
-private fun InstructionBanner(mode: OverlayMode) {
-    val text = when (mode) {
-        OverlayMode.TAP_CENTER -> "Tap the center of the target to calibrate."
-        OverlayMode.TAP_EDGE -> "Now tap the outer edge of the target face."
-        OverlayMode.PLACE_POINTS -> "Tap to add an arrow, drag to adjust, long-press to remove."
-    }
+private fun InstructionBanner() {
     Surface(color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.fillMaxWidth()) {
-        Text(text, modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.bodyMedium)
+        Text(
+            "Drag the blue handles to fit the circle to the target. Tap to add an arrow, drag a mark to adjust, long-press to remove.",
+            modifier = Modifier.padding(12.dp),
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }

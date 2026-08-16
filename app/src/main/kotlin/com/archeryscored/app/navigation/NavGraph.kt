@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.archeryscored.app.ui.addend.AddEndScreen
 import com.archeryscored.app.ui.capture.CaptureEndScreen
+import com.archeryscored.app.ui.diagramentry.DiagramEntryScreen
 import com.archeryscored.app.ui.home.HomeScreen
 import com.archeryscored.app.ui.manualentry.ManualEntryScreen
 import com.archeryscored.app.ui.newsession.NewSessionScreen
@@ -47,6 +48,7 @@ fun ArcheryNavGraph(navController: NavHostController) {
             AddEndScreen(
                 onTakePicture = { sessionId -> navController.navigate(Routes.capture(sessionId)) },
                 onEnterManually = { sessionId -> navController.navigate(Routes.manualEntry(sessionId)) },
+                onEnterViaDiagram = { sessionId -> navController.navigate(Routes.diagramEntry(sessionId)) },
                 onEndCaptured = { sessionId, endId ->
                     navController.navigate(Routes.review(sessionId, endId))
                 },
@@ -69,6 +71,19 @@ fun ArcheryNavGraph(navController: NavHostController) {
             arguments = listOf(navArgument("sessionId") { type = NavType.LongType })
         ) {
             ManualEntryScreen(
+                onSaved = { sessionId ->
+                    navController.navigate(Routes.session(sessionId)) {
+                        popUpTo(Routes.SESSION) { inclusive = true }
+                    }
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(
+            route = Routes.DIAGRAM_ENTRY,
+            arguments = listOf(navArgument("sessionId") { type = NavType.LongType })
+        ) {
+            DiagramEntryScreen(
                 onSaved = { sessionId ->
                     navController.navigate(Routes.session(sessionId)) {
                         popUpTo(Routes.SESSION) { inclusive = true }

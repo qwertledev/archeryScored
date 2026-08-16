@@ -18,7 +18,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.math.sqrt
+
+/** How much of the photo's shorter side a freshly-guessed calibration circle covers by default. */
+private const val DEFAULT_RADIUS_FRACTION = 0.4f
 
 data class ReviewPoint(
     val id: Long,
@@ -33,11 +35,12 @@ data class ReviewUiState(
     val photoPath: String? = null,
     val centerPx: Offset? = null,
     val radiusPx: Float? = null,
-    val mode: OverlayMode = OverlayMode.TAP_CENTER,
     val points: List<ReviewPoint> = emptyList(),
     val isLoading: Boolean = true,
     val isSaved: Boolean = false
-)
+) {
+    val hasCircle: Boolean get() = centerPx != null && radiusPx != null
+}
 
 @HiltViewModel
 class ReviewEndViewModel @Inject constructor(
@@ -71,7 +74,6 @@ class ReviewEndViewModel @Inject constructor(
                 photoPath = end.photoPath,
                 centerPx = center,
                 radiusPx = radius,
-                mode = if (hasCalibration) OverlayMode.PLACE_POINTS else OverlayMode.TAP_CENTER,
                 points = existingPoints.mapNotNull { p ->
                     val x = p.xNormalized ?: return@mapNotNull null
                     val y = p.yNormalized ?: return@mapNotNull null
@@ -88,27 +90,40 @@ class ReviewEndViewModel @Inject constructor(
         return Point2D(center.x + normalized.x * radius, center.y + normalized.y * radius)
     }
 
-    fun onCalibrationTap(offset: Offset) {
+    /** Called once the photo's pixel dimensions are known, if no real calibration was loaded. */
+    fun setDefaultCircleIfNeeded(bitmapWidthPx: Int, bitmapHeightPx: Int) {
         val state = _uiState.value
-        when (state.mode) {
-            OverlayMode.TAP_CENTER -> {
-                _uiState.value = state.copy(centerPx = offset, mode = OverlayMode.TAP_EDGE)
-            }
-            OverlayMode.TAP_EDGE -> {
-                val center = state.centerPx ?: return
-                val dx = offset.x - center.x
-                val dy = offset.y - center.y
-                val radius = sqrt(dx * dx + dy * dy)
-                if (radius < 1f) return
-                _uiState.value = state.copy(radiusPx = radius, mode = OverlayMode.PLACE_POINTS)
-            }
-            OverlayMode.PLACE_POINTS -> Unit
-        }
+        if (state.hasCircle) return
+        val center = Offset(bitmapWidthPx / 2f, bitmapHeightPx / 2f)
+        val radius = minOf(bitmapWidthPx, bitmapHeightPx) * DEFAULT_RADIUS_FRACTION
+        _uiState.value = state.copy(centerPx = center, radiusPx = radius)
     }
 
-    fun onRecalibrate() {
-        _uiState.value = _uiState.value.copy(centerPx = null, radiusPx = null, mode = OverlayMode.TAP_CENTER)
+    fun resetCircle(bitmapWidthPx: Int, bitmapHeightPx: Int) {
+        val state = _uiState.value
+        val center = Offset(bitmapWidthPx / 2f, bitmapHeightPx / 2f)
+        val radius = minOf(bitmapWidthPx, bitmapHeightPx) * DEFAULT_RADIUS_FRACTION
+        _uiState.value = state.copy(centerPx = center, radiusPx = radius, points = rescoreAll(state.points, center, radius))
     }
+
+    fun onCenterChange(newCenter: Offset) {
+        val state = _uiState.value
+        val radius = state.radiusPx ?: return
+        _uiState.value = state.copy(centerPx = newCenter, points = rescoreAll(state.points, newCenter, radius))
+    }
+
+    fun onRadiusChange(newRadius: Float) {
+        val state = _uiState.value
+        val center = state.centerPx ?: return
+        if (newRadius < 10f) return
+        _uiState.value = state.copy(radiusPx = newRadius, points = rescoreAll(state.points, center, newRadius))
+    }
+
+    private fun rescoreAll(points: List<ReviewPoint>, center: Offset, radius: Float): List<ReviewPoint> =
+        points.map { p ->
+            val scored = ScoreCalculator.score(Point2D(p.xPx, p.yPx), Point2D(center.x, center.y), radius, ringConfig)
+            p.copy(score = scored.score, isX = scored.isX)
+        }
 
     fun onAddPoint(offset: Offset) {
         val state = _uiState.value
