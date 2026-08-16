@@ -15,4 +15,8 @@ class PhotoStorage(private val context: Context) {
     fun resolve(relativePath: String): File = File(context.filesDir, relativePath)
 
     fun relativePath(file: File): String = file.relativeTo(context.filesDir).path
+
+    fun deletePhotosForSession(sessionId: Long) {
+        File(context.filesDir, "photos/session_$sessionId").deleteRecursively()
+    }
 }

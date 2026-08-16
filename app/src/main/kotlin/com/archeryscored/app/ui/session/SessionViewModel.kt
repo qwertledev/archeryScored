@@ -3,6 +3,7 @@ package com.archeryscored.app.ui.session
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.archeryscored.app.util.sessionDisplayName
 import com.archeryscored.data.repository.SessionRepository
 import com.archeryscored.model.GroupStatsCalculator
 import com.archeryscored.model.Point2D
@@ -57,7 +58,7 @@ class SessionViewModel @Inject constructor(
         val normalizedPoints = points.map { Point2D(it.xNormalized, it.yNormalized) }
         val stats = GroupStatsCalculator.compute(normalizedPoints)
         SessionUiState(
-            sessionName = session?.name.orEmpty(),
+            sessionName = session?.let { sessionDisplayName(it.createdAt, it.label) }.orEmpty(),
             ended = session?.endedAt != null,
             ringConfig = ringConfig,
             allPoints = normalizedPoints,

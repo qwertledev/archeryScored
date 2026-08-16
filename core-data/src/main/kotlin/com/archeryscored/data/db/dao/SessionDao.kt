@@ -26,6 +26,12 @@ interface SessionDao {
     @Delete
     suspend fun delete(session: SessionEntity)
 
+    @Query("DELETE FROM sessions WHERE id = :sessionId")
+    suspend fun deleteById(sessionId: Long)
+
     @Query("UPDATE sessions SET endedAt = :endedAt WHERE id = :sessionId")
     suspend fun setEndedAt(sessionId: Long, endedAt: Instant?)
+
+    @Query("UPDATE sessions SET label = :label WHERE id = :sessionId")
+    suspend fun setLabel(sessionId: Long, label: String?)
 }

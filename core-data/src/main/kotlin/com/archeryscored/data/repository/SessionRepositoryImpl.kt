@@ -23,18 +23,27 @@ class SessionRepositoryImpl(
 
     override fun getSession(sessionId: Long): Flow<SessionEntity?> = sessionDao.getById(sessionId)
 
-    override suspend fun createSession(name: String, targetFaceTypeId: String, distanceMeters: Float?): Long =
+    override suspend fun createSession(label: String?, targetFaceTypeId: String, distanceMeters: Float?): Long =
         sessionDao.insert(
             SessionEntity(
-                name = name,
                 targetFaceTypeId = targetFaceTypeId,
                 distanceMeters = distanceMeters,
-                createdAt = Clock.System.now()
+                createdAt = Clock.System.now(),
+                label = label?.trim()?.ifBlank { null }
             )
         )
 
     override suspend fun endSession(sessionId: Long) {
         sessionDao.setEndedAt(sessionId, Clock.System.now())
+    }
+
+    override suspend fun updateSessionLabel(sessionId: Long, label: String?) {
+        sessionDao.setLabel(sessionId, label?.trim()?.ifBlank { null })
+    }
+
+    override suspend fun deleteSession(sessionId: Long) {
+        sessionDao.deleteById(sessionId)
+        photoStorage.deletePhotosForSession(sessionId)
     }
 
     override fun getEndsForSession(sessionId: Long): Flow<List<EndEntity>> = endDao.getEndsForSession(sessionId)

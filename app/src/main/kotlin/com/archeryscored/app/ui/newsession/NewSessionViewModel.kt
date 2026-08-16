@@ -2,6 +2,7 @@ package com.archeryscored.app.ui.newsession
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.archeryscored.app.util.formatSessionDateTime
 import com.archeryscored.data.repository.SessionRepository
 import com.archeryscored.model.TargetFaceType
 import com.archeryscored.model.TargetFaces
@@ -10,13 +11,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import javax.inject.Inject
 
 /** The distances offered when starting a session, in meters. */
 val STANDARD_DISTANCES_METERS = listOf(20, 30, 40, 70)
 
 data class NewSessionUiState(
-    val name: String = "",
+    val label: String = "",
     val indoor: Boolean = true,
     val distanceMeters: Int = STANDARD_DISTANCES_METERS.first(),
     val selectedFace: TargetFaceType = TargetFaces.standardRecurve.first { it.indoor },
@@ -31,11 +33,14 @@ class NewSessionViewModel @Inject constructor(
     private val repository: SessionRepository
 ) : ViewModel() {
 
+    /** Computed once so the preview shown on screen exactly matches what gets saved. */
+    val sessionDateTime: String = formatSessionDateTime(Clock.System.now())
+
     private val _uiState = MutableStateFlow(NewSessionUiState())
     val uiState: StateFlow<NewSessionUiState> = _uiState.asStateFlow()
 
-    fun onNameChange(value: String) {
-        _uiState.value = _uiState.value.copy(name = value)
+    fun onLabelChange(value: String) {
+        _uiState.value = _uiState.value.copy(label = value)
     }
 
     fun onIndoorChange(indoor: Boolean) {
@@ -55,9 +60,8 @@ class NewSessionViewModel @Inject constructor(
 
     fun createSession() {
         val state = _uiState.value
-        val sessionName = state.name.ifBlank { "Session" }
         viewModelScope.launch {
-            val id = repository.createSession(sessionName, state.selectedFace.id, state.distanceMeters.toFloat())
+            val id = repository.createSession(state.label, state.selectedFace.id, state.distanceMeters.toFloat())
             _uiState.value = _uiState.value.copy(createdSessionId = id)
         }
     }

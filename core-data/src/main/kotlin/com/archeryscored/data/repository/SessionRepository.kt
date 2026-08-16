@@ -10,8 +10,10 @@ import java.io.File
 interface SessionRepository {
     fun getAllSessions(): Flow<List<SessionEntity>>
     fun getSession(sessionId: Long): Flow<SessionEntity?>
-    suspend fun createSession(name: String, targetFaceTypeId: String, distanceMeters: Float?): Long
+    suspend fun createSession(label: String?, targetFaceTypeId: String, distanceMeters: Float?): Long
     suspend fun endSession(sessionId: Long)
+    suspend fun updateSessionLabel(sessionId: Long, label: String?)
+    suspend fun deleteSession(sessionId: Long)
 
     fun getEndsForSession(sessionId: Long): Flow<List<EndEntity>>
     fun newPhotoFile(sessionId: Long, endNumber: Int): File

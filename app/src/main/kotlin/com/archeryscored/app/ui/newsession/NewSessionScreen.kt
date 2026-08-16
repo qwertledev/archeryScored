@@ -47,9 +47,18 @@ fun NewSessionScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             OutlinedTextField(
-                value = uiState.name,
-                onValueChange = viewModel::onNameChange,
-                label = { Text("Session name") },
+                value = viewModel.sessionDateTime,
+                onValueChange = {},
+                enabled = false,
+                label = { Text("Session") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = uiState.label,
+                onValueChange = viewModel::onLabelChange,
+                label = { Text("Label (optional)") },
+                placeholder = { Text("e.g. Indoor league week 4") },
                 modifier = Modifier.fillMaxWidth()
             )
 
