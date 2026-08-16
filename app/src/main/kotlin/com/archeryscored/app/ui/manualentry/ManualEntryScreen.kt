@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.archeryscored.model.MAX_ARROWS_PER_END
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +63,11 @@ fun ManualEntryScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                "Tap a value for each arrow you shot.",
+                if (uiState.canAddMore) {
+                    "Tap a value for each arrow you shot (up to $MAX_ARROWS_PER_END per end)."
+                } else {
+                    "$MAX_ARROWS_PER_END arrows recorded. Remove one below to change it."
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -76,6 +81,7 @@ fun ManualEntryScreen(
                 items(uiState.palette) { value ->
                     FilledTonalButton(
                         onClick = { viewModel.addEntry(value) },
+                        enabled = uiState.canAddMore,
                         modifier = Modifier.aspectRatio(1.4f)
                     ) {
                         Text(value.label, style = MaterialTheme.typography.titleMedium)

@@ -49,6 +49,11 @@ position - they count toward the total score and the progression chart, but are 
 grouping chart (which plots position, not just score) since there's no position to plot. Diagram-tap
 ends *do* have a position (relative to the diagram's own fixed circle) and do show up there.
 
+Every end is capped at `MAX_ARROWS_PER_END` (3, in `core-model/.../EndRules.kt`), enforced the same
+way everywhere an arrow gets added - Manual Entry disables the palette once full, Diagram Entry and
+Review's tap-to-add both stop accepting new taps, and CV auto-detection keeps only the top 3 results
+by confidence if it finds more (false positives being far likelier than a genuine fourth arrow).
+
 On `Review`, the calibration circle is never a separate "step" - it's always visible from the moment
 the photo loads (auto-detected, previously saved, or a computed default centered on the photo), with
 two large icon handles: move (center) and resize (edge). Dragging either live-rescoring every placed

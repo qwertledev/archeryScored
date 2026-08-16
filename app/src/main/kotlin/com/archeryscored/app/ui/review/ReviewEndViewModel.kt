@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.archeryscored.data.db.entity.ArrowPointEntity
 import com.archeryscored.data.repository.SessionRepository
+import com.archeryscored.model.MAX_ARROWS_PER_END
 import com.archeryscored.model.Point2D
 import com.archeryscored.model.PointSource
 import com.archeryscored.model.RingConfig
@@ -40,6 +41,7 @@ data class ReviewUiState(
     val isSaved: Boolean = false
 ) {
     val hasCircle: Boolean get() = centerPx != null && radiusPx != null
+    val canAddMore: Boolean get() = points.size < MAX_ARROWS_PER_END
 }
 
 @HiltViewModel
@@ -127,6 +129,7 @@ class ReviewEndViewModel @Inject constructor(
 
     fun onAddPoint(offset: Offset) {
         val state = _uiState.value
+        if (!state.canAddMore) return
         val center = state.centerPx ?: return
         val radius = state.radiusPx ?: return
         val scored = ScoreCalculator.score(Point2D(offset.x, offset.y), Point2D(center.x, center.y), radius, ringConfig)

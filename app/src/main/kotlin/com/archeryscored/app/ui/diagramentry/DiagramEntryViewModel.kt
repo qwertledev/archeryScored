@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.archeryscored.data.db.entity.ArrowPointEntity
 import com.archeryscored.data.repository.SessionRepository
+import com.archeryscored.model.MAX_ARROWS_PER_END
 import com.archeryscored.model.Point2D
 import com.archeryscored.model.PointSource
 import com.archeryscored.model.RingConfig
@@ -32,6 +33,7 @@ data class DiagramEntryUiState(
     val saved: Boolean = false
 ) {
     val totalScore: Int get() = points.sumOf { it.score }
+    val canAddMore: Boolean get() = points.size < MAX_ARROWS_PER_END
 }
 
 @HiltViewModel
@@ -62,6 +64,7 @@ class DiagramEntryViewModel @Inject constructor(
 
     fun onAddPoint(normalized: Offset) {
         val state = _uiState.value
+        if (!state.canAddMore) return
         val scored = ScoreCalculator.scoreNormalized(Point2D(normalized.x, normalized.y), state.ringConfig)
         val point = DiagramPoint(nextLocalId--, normalized.x, normalized.y, scored.score, scored.isX)
         _uiState.value = state.copy(points = state.points + point)

@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.archeryscored.model.MAX_ARROWS_PER_END
 import com.archeryscored.model.PointSource
 import java.io.File
 
@@ -61,7 +62,7 @@ fun ReviewEndScreen(
         }
 
         Column(Modifier.fillMaxSize().padding(padding)) {
-            InstructionBanner()
+            InstructionBanner(canAddMore = uiState.canAddMore)
 
             val center = uiState.centerPx
             val radius = uiState.radiusPx
@@ -112,12 +113,13 @@ fun ReviewEndScreen(
 }
 
 @Composable
-private fun InstructionBanner() {
+private fun InstructionBanner(canAddMore: Boolean) {
+    val text = if (canAddMore) {
+        "Drag the blue handles to fit the circle to the target. Tap to add an arrow (up to $MAX_ARROWS_PER_END), drag a mark to adjust, long-press to remove."
+    } else {
+        "$MAX_ARROWS_PER_END arrows recorded. Drag the blue handles to fit the circle, drag a mark to adjust, long-press to remove one."
+    }
     Surface(color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.fillMaxWidth()) {
-        Text(
-            "Drag the blue handles to fit the circle to the target. Tap to add an arrow, drag a mark to adjust, long-press to remove.",
-            modifier = Modifier.padding(12.dp),
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Text(text, modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.bodyMedium)
     }
 }

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.archeryscored.data.db.entity.ArrowPointEntity
 import com.archeryscored.data.repository.SessionRepository
+import com.archeryscored.model.MAX_ARROWS_PER_END
 import com.archeryscored.model.PointSource
 import com.archeryscored.model.RingConfig
 import com.archeryscored.model.TargetFaces
@@ -31,6 +32,7 @@ data class ManualEntryUiState(
     val saved: Boolean = false
 ) {
     val total: Int get() = entries.sumOf { it.score }
+    val canAddMore: Boolean get() = entries.size < MAX_ARROWS_PER_END
     /** Palette offered, best score first: X (if this face has one), then max score down to 1, then Miss. */
     val palette: List<ManualScoreValue>
         get() {
@@ -70,7 +72,9 @@ class ManualEntryViewModel @Inject constructor(
     }
 
     fun addEntry(value: ManualScoreValue) {
-        _uiState.value = _uiState.value.copy(entries = _uiState.value.entries + value)
+        val state = _uiState.value
+        if (!state.canAddMore) return
+        _uiState.value = state.copy(entries = state.entries + value)
     }
 
     fun removeEntryAt(index: Int) {

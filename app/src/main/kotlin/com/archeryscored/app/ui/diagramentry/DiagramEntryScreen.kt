@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.archeryscored.model.MAX_ARROWS_PER_END
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,7 +56,11 @@ fun DiagramEntryScreen(
         ) {
             Surface(color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    "Tap where each arrow landed. Drag a mark to adjust, long-press to remove.",
+                    if (uiState.canAddMore) {
+                        "Tap where each arrow landed (up to $MAX_ARROWS_PER_END per end). Drag a mark to adjust, long-press to remove."
+                    } else {
+                        "$MAX_ARROWS_PER_END arrows recorded. Long-press a mark to remove it if you need to change one."
+                    },
                     modifier = Modifier.padding(12.dp),
                     style = MaterialTheme.typography.bodyMedium
                 )

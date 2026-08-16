@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory
 import com.archeryscored.cv.DetectionPipeline
 import com.archeryscored.data.db.entity.ArrowPointEntity
 import com.archeryscored.data.repository.SessionRepository
+import com.archeryscored.model.MAX_ARROWS_PER_END
 import com.archeryscored.model.Point2D
 import com.archeryscored.model.PointSource
 import com.archeryscored.model.ScoreCalculator
@@ -45,22 +46,28 @@ class EndCaptureUseCase @Inject constructor(
         val geometry = outcome.geometry
         repository.updateCalibration(endId, geometry.centerXPx, geometry.centerYPx, geometry.radiusPx, confirmed = false)
 
-        val points = outcome.arrows.map { arrow ->
-            val normalized = ScoreCalculator.normalize(
-                Point2D(arrow.xPx, arrow.yPx),
-                Point2D(geometry.centerXPx, geometry.centerYPx),
-                geometry.radiusPx
-            )
-            val scored = ScoreCalculator.scoreNormalized(normalized, face.ringConfig)
-            ArrowPointEntity(
-                endId = endId,
-                xNormalized = normalized.x,
-                yNormalized = normalized.y,
-                score = scored.score,
-                isX = scored.isX,
-                source = PointSource.AUTO_DETECTED
-            )
-        }
+        // Every end is capped at MAX_ARROWS_PER_END; if detection finds more (false positives are
+        // more likely than a genuine extra arrow), keep only the most confident ones - the archer
+        // can still add/move/delete on Review if this guessed wrong.
+        val points = outcome.arrows
+            .sortedByDescending { it.confidence }
+            .take(MAX_ARROWS_PER_END)
+            .map { arrow ->
+                val normalized = ScoreCalculator.normalize(
+                    Point2D(arrow.xPx, arrow.yPx),
+                    Point2D(geometry.centerXPx, geometry.centerYPx),
+                    geometry.radiusPx
+                )
+                val scored = ScoreCalculator.scoreNormalized(normalized, face.ringConfig)
+                ArrowPointEntity(
+                    endId = endId,
+                    xNormalized = normalized.x,
+                    yNormalized = normalized.y,
+                    score = scored.score,
+                    isX = scored.isX,
+                    source = PointSource.AUTO_DETECTED
+                )
+            }
         repository.saveArrowPoints(endId, points)
     }
 }
