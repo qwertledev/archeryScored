@@ -34,23 +34,24 @@ and CV pipeline have not been exercised on-device yet. Before relying on this:
 ## Navigation flow
 
 `Home` → `New Session` (pick round/distance/face) → `Session` (per-session dashboard: total score,
-grouping/progression charts, the end-by-end list, and an **Add end** button) → `Add End` (chooser -
-no camera/permission touched yet) → one of:
+grouping/progression charts, the end-by-end list, and an **Add end** button) → `Add End` (no camera/
+permission touched yet). This screen always shows all the ways to record an end at once, no picking
+a mode first:
 
 - **Take a picture** → `Capture` (camera only) → `Review` (correct detected/tapped arrows, **Save end**)
 - **Use a picture** → system Photo Picker, straight into the same auto-detect/`Review` pipeline
 - **Tap on a target** → `Diagram Entry` (a blank rendered target face, tap where each arrow landed) →
   saves straight back to `Session` - no photo, but a real position, so it plots on the grouping chart
-- **Enter scores manually** → `Manual Entry` (tap a value per arrow, Miss through X, no photo/position
-  at all) → saves straight back to `Session`, skipping Review since there's nothing to correct
+- **Quick score entry** - a Miss-through-X palette embedded directly on the `Add End` screen itself
+  (not a separate destination), for when a photo/diagram is overkill and you just want the number in
 
-All four converge back on `Session`. Manually-entered (numeric) ends have no photo and no arrow
-position - they count toward the total score and the progression chart, but are skipped by the
-grouping chart (which plots position, not just score) since there's no position to plot. Diagram-tap
-ends *do* have a position (relative to the diagram's own fixed circle) and do show up there.
+All routes converge back on `Session`. Quick/numeric entries have no photo and no arrow position -
+they count toward the total score and the progression chart, but are skipped by the grouping chart
+(which plots position, not just score) since there's no position to plot. Diagram-tap ends *do* have
+a position (relative to the diagram's own fixed circle) and do show up there.
 
 Every end is capped at `MAX_ARROWS_PER_END` (3, in `core-model/.../EndRules.kt`), enforced the same
-way everywhere an arrow gets added - Manual Entry disables the palette once full, Diagram Entry and
+way everywhere an arrow gets added - the quick-entry palette disables once full, Diagram Entry and
 Review's tap-to-add both stop accepting new taps, and CV auto-detection keeps only the top 3 results
 by confidence if it finds more (false positives being far likelier than a genuine fourth arrow).
 
@@ -61,6 +62,11 @@ arrow, since score depends on distance from center relative to radius. "Reset ci
 the computed default. Arrow marks themselves are large filled circles (not just text) and render
 offset to the left of the actual touch point while being placed/dragged, specifically so the mark is
 never hidden under the finger placing it - the offset position is what's recorded, not the raw touch.
+
+Target faces (`Diagram Entry` and the grouping chart) draw a boundary stroke between every individual
+scoring ring, not just between the 5 fill colors - the 10 and 9 rings both being GOLD, for instance,
+would otherwise blend into one solid blob with no visible seam between them. `Diagram Entry` also
+labels each band with its score number (`app/ui/common/TargetFaceDrawing.kt:drawTargetFace`).
 
 A session with no `endedAt` timestamp is "in progress" and can always be reopened from `Home` to add
 more ends; tapping **Finish session** on the Session screen (with a confirmation dialog) sets that

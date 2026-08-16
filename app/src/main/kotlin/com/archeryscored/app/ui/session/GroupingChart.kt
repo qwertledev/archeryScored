@@ -8,7 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import com.archeryscored.app.ui.common.colorFor
+import com.archeryscored.app.ui.common.drawTargetFace
 import com.archeryscored.model.Point2D
 import com.archeryscored.model.RingConfig
 
@@ -24,14 +24,7 @@ fun GroupingChart(
         val radiusPx = size.minDimension / 2f
         val center = Offset(size.width / 2f, size.height / 2f)
 
-        ringConfig.sortedBoundaries.sortedByDescending { it.outerRadiusRatio }.forEach { boundary ->
-            drawCircle(
-                color = colorFor(boundary.colorHint),
-                radius = radiusPx * boundary.outerRadiusRatio,
-                center = center
-            )
-        }
-        drawCircle(color = Color.Black, radius = radiusPx, center = center, style = Stroke(width = 2f))
+        drawTargetFace(ringConfig = ringConfig, center = center, radiusPx = radiusPx, showLabels = false)
 
         points.forEach { p ->
             drawCircle(

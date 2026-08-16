@@ -9,13 +9,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import com.archeryscored.app.ui.common.ArrowMarker
 import com.archeryscored.app.ui.common.MarkerPoint
-import com.archeryscored.app.ui.common.colorFor
+import com.archeryscored.app.ui.common.drawTargetFace
 import com.archeryscored.app.ui.common.touchOffsetPx
 import com.archeryscored.model.RingConfig
 
@@ -50,10 +48,7 @@ fun TargetDiagramInput(
                     })
                 }
         ) {
-            ringConfig.sortedBoundaries.sortedByDescending { it.outerRadiusRatio }.forEach { boundary ->
-                drawCircle(color = colorFor(boundary.colorHint), radius = radiusPx * boundary.outerRadiusRatio, center = centerPx)
-            }
-            drawCircle(color = Color.Black, radius = radiusPx, center = centerPx, style = Stroke(width = 3f))
+            drawTargetFace(ringConfig = ringConfig, center = centerPx, radiusPx = radiusPx, showLabels = true)
         }
 
         points.forEach { p ->
