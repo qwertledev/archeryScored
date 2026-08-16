@@ -27,23 +27,34 @@ and CV pipeline have not been exercised on-device yet. Before relying on this:
 - The Room schema uses `fallbackToDestructiveMigration()` (pre-1.0, no real user data to preserve
   yet) — installing a new debug build over an older one after a schema change wipes local session
   data rather than crashing. Worth replacing with a real migration once this has real users.
+- The manual-entry palette (Miss/1-9/10/X) is derived from the session's `RingConfig`, so it already
+  adapts to any face's max score and whether it has an X-ring - but only the four standard WA sizes
+  are actually selectable from New Session today, so it's only been exercised against those.
 
 ## Navigation flow
 
 `Home` → `New Session` (pick round/distance/face) → `Session` (per-session dashboard: total score,
-grouping/progression charts, the end-by-end list, and a **Capture end** button) → `Capture` (camera,
-reached only by explicitly tapping Capture end — it no longer opens automatically) → `Review`
-(correct detected/tapped arrows, **Save end**) → back to `Session`.
+grouping/progression charts, the end-by-end list, and an **Add end** button) → `Add End` (chooser -
+no camera/permission touched yet) → one of:
+
+- **Take a picture** → `Capture` (camera only) → `Review` (correct detected/tapped arrows, **Save end**)
+- **Use a picture** → system Photo Picker, straight into the same auto-detect/`Review` pipeline
+- **Enter scores manually** → `Manual Entry` (tap a value per arrow, Miss through X, no photo/position
+  at all) → saves straight back to `Session`, skipping Review since there's nothing to correct
+
+All three converge back on `Session`. A manually-entered end has no photo and no arrow position - it
+counts toward the total score and the progression chart, but is skipped by the grouping chart (which
+plots position, not just score) since there's no position to plot.
 
 A session with no `endedAt` timestamp is "in progress" and can always be reopened from `Home` to add
 more ends; tapping **Finish session** on the Session screen (with a confirmation dialog) sets that
-timestamp and hides the Capture/Finish actions from then on, leaving the session as a read-only record.
+timestamp and hides the Add end/Finish actions from then on, leaving the session as a read-only record.
 
-On `Capture`, an end's photo can come from either the camera or the system Photo Picker (an "upload"
-button next to the shutter FAB, and the only option shown if camera permission isn't granted) — both
-paths converge on the same `createEnd`/auto-detect/Review pipeline. Uploaded images are decoded and
-re-encoded as an upright JPEG (EXIF orientation applied) before saving, since Bitmap/OpenCV don't
-honor EXIF rotation on their own and calibration assumes pixel coordinates match what's displayed.
+Uploaded images are decoded and re-encoded as an upright JPEG, downsampled to a bounded resolution
+(EXIF orientation applied) before saving, since Bitmap/OpenCV don't honor EXIF rotation on their own,
+calibration assumes pixel coordinates match what's displayed, and a naive full-resolution decode of an
+arbitrary gallery photo (48MP+ on modern phones) was crashing the app outright via an OS-level
+low-memory kill - not something a try/catch can intercept.
 
 ## Project structure
 

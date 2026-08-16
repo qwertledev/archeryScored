@@ -55,7 +55,12 @@ class SessionViewModel @Inject constructor(
             val endPoints = pointsByEnd[end.id].orEmpty()
             EndSummary(end.id, end.endNumber, endPoints.sumOf { it.score }, endPoints.size)
         }
-        val normalizedPoints = points.map { Point2D(it.xNormalized, it.yNormalized) }
+        // Manually-entered scores have no position to plot - only the photo-derived points count here.
+        val normalizedPoints = points.mapNotNull { p ->
+            val x = p.xNormalized ?: return@mapNotNull null
+            val y = p.yNormalized ?: return@mapNotNull null
+            Point2D(x, y)
+        }
         val stats = GroupStatsCalculator.compute(normalizedPoints)
         SessionUiState(
             sessionName = session?.let { sessionDisplayName(it.createdAt, it.label) }.orEmpty(),

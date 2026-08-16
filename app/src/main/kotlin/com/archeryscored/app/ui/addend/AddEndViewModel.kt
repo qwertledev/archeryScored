@@ -1,11 +1,13 @@
-package com.archeryscored.app.ui.capture
+package com.archeryscored.app.ui.addend
 
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.archeryscored.app.capture.EndCaptureUseCase
 import com.archeryscored.data.repository.SessionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -13,11 +15,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.io.File
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
-class CaptureEndViewModel @Inject constructor(
+class AddEndViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: SessionRepository,
     private val endCaptureUseCase: EndCaptureUseCase
@@ -25,8 +27,6 @@ class CaptureEndViewModel @Inject constructor(
 
     val sessionId: Long = checkNotNull(savedStateHandle["sessionId"])
 
-    // Derived from the DB rather than a local counter, so it stays correct even though this
-    // ViewModel is recreated fresh each time the archer returns here after finishing an end.
     val endCount: StateFlow<Int> = repository.getEndsForSession(sessionId)
         .map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
@@ -40,31 +40,28 @@ class CaptureEndViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    fun newPhotoFile(): File {
-        val endNumber = endCount.value + 1
-        return repository.newPhotoFile(sessionId, endNumber)
-    }
-
-    fun onPhotoSaved(file: File) {
+    fun onPhotoUploaded(sourceUri: Uri) {
         viewModelScope.launch {
             _isSaving.value = true
             runCatching {
                 val endNumber = endCount.value + 1
+                val file = repository.newPhotoFile(sessionId, endNumber)
+                withContext(Dispatchers.IO) { repository.importUploadedPhoto(sourceUri, file) }
                 endCaptureUseCase.persistEnd(sessionId, endNumber, file)
             }.onSuccess { endId ->
                 _navigateToReview.value = endId
             }.onFailure {
-                _errorMessage.value = "Could not save that photo. Try again."
+                _errorMessage.value = "Could not use that photo. Try a different one."
             }
             _isSaving.value = false
         }
     }
 
-    fun consumeErrorMessage() {
-        _errorMessage.value = null
-    }
-
     fun consumeNavigation() {
         _navigateToReview.value = null
+    }
+
+    fun consumeErrorMessage() {
+        _errorMessage.value = null
     }
 }

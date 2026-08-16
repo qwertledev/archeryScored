@@ -6,8 +6,10 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.archeryscored.app.ui.addend.AddEndScreen
 import com.archeryscored.app.ui.capture.CaptureEndScreen
 import com.archeryscored.app.ui.home.HomeScreen
+import com.archeryscored.app.ui.manualentry.ManualEntryScreen
 import com.archeryscored.app.ui.newsession.NewSessionScreen
 import com.archeryscored.app.ui.review.ReviewEndScreen
 import com.archeryscored.app.ui.session.SessionScreen
@@ -35,7 +37,20 @@ fun ArcheryNavGraph(navController: NavHostController) {
             arguments = listOf(navArgument("sessionId") { type = NavType.LongType })
         ) {
             SessionScreen(
-                onCaptureEnd = { sessionId -> navController.navigate(Routes.capture(sessionId)) }
+                onAddEnd = { sessionId -> navController.navigate(Routes.addEnd(sessionId)) }
+            )
+        }
+        composable(
+            route = Routes.ADD_END,
+            arguments = listOf(navArgument("sessionId") { type = NavType.LongType })
+        ) {
+            AddEndScreen(
+                onTakePicture = { sessionId -> navController.navigate(Routes.capture(sessionId)) },
+                onEnterManually = { sessionId -> navController.navigate(Routes.manualEntry(sessionId)) },
+                onEndCaptured = { sessionId, endId ->
+                    navController.navigate(Routes.review(sessionId, endId))
+                },
+                onBack = { navController.popBackStack() }
             )
         }
         composable(
@@ -45,6 +60,19 @@ fun ArcheryNavGraph(navController: NavHostController) {
             CaptureEndScreen(
                 onEndCaptured = { sessionId, endId ->
                     navController.navigate(Routes.review(sessionId, endId))
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(
+            route = Routes.MANUAL_ENTRY,
+            arguments = listOf(navArgument("sessionId") { type = NavType.LongType })
+        ) {
+            ManualEntryScreen(
+                onSaved = { sessionId ->
+                    navController.navigate(Routes.session(sessionId)) {
+                        popUpTo(Routes.SESSION) { inclusive = true }
+                    }
                 },
                 onBack = { navController.popBackStack() }
             )

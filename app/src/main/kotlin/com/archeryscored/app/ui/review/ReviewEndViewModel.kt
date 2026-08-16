@@ -72,8 +72,10 @@ class ReviewEndViewModel @Inject constructor(
                 centerPx = center,
                 radiusPx = radius,
                 mode = if (hasCalibration) OverlayMode.PLACE_POINTS else OverlayMode.TAP_CENTER,
-                points = existingPoints.map { p ->
-                    val px = denormalize(Point2D(p.xNormalized, p.yNormalized), center, radius)
+                points = existingPoints.mapNotNull { p ->
+                    val x = p.xNormalized ?: return@mapNotNull null
+                    val y = p.yNormalized ?: return@mapNotNull null
+                    val px = denormalize(Point2D(x, y), center, radius)
                     ReviewPoint(p.id, px.x, px.y, p.score, p.isX, p.source)
                 },
                 isLoading = false

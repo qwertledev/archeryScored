@@ -3,7 +3,6 @@ package com.archeryscored.app.ui.capture
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
@@ -14,18 +13,14 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,10 +41,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import java.util.concurrent.Executors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,13 +76,6 @@ fun CaptureEndScreen(
         }
     }
 
-    val uploadLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri -> uri?.let(viewModel::onPhotoUploaded) }
-    val launchUpload = {
-        uploadLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-    }
-
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
@@ -106,7 +94,7 @@ fun CaptureEndScreen(
                 title = { Text("End ${endCount + 1}") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to session")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -115,11 +103,7 @@ fun CaptureEndScreen(
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             if (!hasCameraPermission) {
-                PermissionRationale(
-                    onRequestPermission = { permissionLauncher.launch(Manifest.permission.CAMERA) },
-                    onUpload = launchUpload,
-                    isSaving = isSaving
-                )
+                PermissionRationale(onRequestPermission = { permissionLauncher.launch(Manifest.permission.CAMERA) })
             } else {
                 var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
                 val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
@@ -151,22 +135,13 @@ fun CaptureEndScreen(
                     }
                 )
 
-                Column(
-                    Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+                Box(Modifier.fillMaxSize().padding(24.dp)) {
                     if (isSaving) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(Modifier.align(Alignment.BottomCenter))
                     } else {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(20.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            FilledTonalIconButton(onClick = launchUpload) {
-                                Icon(Icons.Filled.PhotoLibrary, contentDescription = "Upload photo")
-                            }
-                            FloatingActionButton(onClick = {
+                        FloatingActionButton(
+                            modifier = Modifier.align(Alignment.BottomCenter),
+                            onClick = {
                                 val capture = imageCapture ?: return@FloatingActionButton
                                 val file = viewModel.newPhotoFile()
                                 val outputOptions = ImageCapture.OutputFileOptions.Builder(file).build()
@@ -183,9 +158,9 @@ fun CaptureEndScreen(
                                         }
                                     }
                                 )
-                            }) {
-                                Icon(Icons.Filled.PhotoCamera, contentDescription = "Capture end")
                             }
+                        ) {
+                            Icon(Icons.Filled.PhotoCamera, contentDescription = "Capture end")
                         }
                     }
                 }
@@ -195,20 +170,14 @@ fun CaptureEndScreen(
 }
 
 @Composable
-private fun PermissionRationale(onRequestPermission: () -> Unit, onUpload: () -> Unit, isSaving: Boolean) {
+private fun PermissionRationale(onRequestPermission: () -> Unit) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        if (isSaving) {
-            CircularProgressIndicator()
-        } else {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Camera access is needed to photograph your target.")
-                Button(onClick = onRequestPermission) { Text("Grant camera permission") }
-                Text("or")
-                FilledTonalIconButton(onClick = onUpload) {
-                    Icon(Icons.Filled.PhotoLibrary, contentDescription = "Upload photo")
-                }
-                Text("Upload a photo instead")
-            }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("Camera access is needed to photograph your target.")
+            Button(onClick = onRequestPermission) { Text("Grant camera permission") }
         }
     }
 }

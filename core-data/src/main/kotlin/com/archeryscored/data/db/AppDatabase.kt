@@ -12,7 +12,7 @@ import com.archeryscored.data.db.entity.SessionEntity
 
 @Database(
     entities = [SessionEntity::class, EndEntity::class, ArrowPointEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

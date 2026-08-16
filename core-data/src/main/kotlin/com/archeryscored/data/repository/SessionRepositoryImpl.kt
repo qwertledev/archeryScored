@@ -56,12 +56,12 @@ class SessionRepositoryImpl(
         photoStorage.importUploadedPhoto(sourceUri, destFile)
     }
 
-    override suspend fun createEnd(sessionId: Long, endNumber: Int, photoFile: File, capturedAt: Instant): Long =
+    override suspend fun createEnd(sessionId: Long, endNumber: Int, photoFile: File?, capturedAt: Instant): Long =
         endDao.insert(
             EndEntity(
                 sessionId = sessionId,
                 endNumber = endNumber,
-                photoPath = photoStorage.relativePath(photoFile),
+                photoPath = photoFile?.let { photoStorage.relativePath(it) },
                 capturedAt = capturedAt
             )
         )

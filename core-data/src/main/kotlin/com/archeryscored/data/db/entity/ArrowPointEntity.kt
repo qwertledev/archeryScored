@@ -10,6 +10,9 @@ import com.archeryscored.model.PointSource
  * Stored in normalized coordinates ((px - centerPx) / radiusPx from the owning [EndEntity]) rather
  * than raw pixels, so the session-wide grouping chart can overlay arrows from different photos
  * without needing to reconcile per-photo resolution or calibration differences.
+ *
+ * [xNormalized]/[yNormalized] are null for a manually-entered score with no photo - there's no
+ * position to plot, only a score. Consumers of the grouping chart must skip those.
  */
 @Entity(
     tableName = "arrow_points",
@@ -26,8 +29,8 @@ import com.archeryscored.model.PointSource
 data class ArrowPointEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val endId: Long,
-    val xNormalized: Float,
-    val yNormalized: Float,
+    val xNormalized: Float?,
+    val yNormalized: Float?,
     val score: Int,
     val isX: Boolean = false,
     val source: PointSource,

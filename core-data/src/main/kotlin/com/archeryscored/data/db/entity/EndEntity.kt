@@ -22,8 +22,11 @@ data class EndEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val sessionId: Long,
     val endNumber: Int,
-    /** Relative to the app's private files dir, e.g. "photos/session_3/end_1_1699999999.jpg". */
-    val photoPath: String,
+    /**
+     * Relative to the app's private files dir, e.g. "photos/session_3/end_1_1699999999.jpg".
+     * Null for an end entered manually with no photo at all.
+     */
+    val photoPath: String? = null,
     val capturedAt: Instant,
     val centerXPx: Float? = null,
     val centerYPx: Float? = null,

@@ -34,7 +34,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SessionScreen(
-    onCaptureEnd: (sessionId: Long) -> Unit,
+    onAddEnd: (sessionId: Long) -> Unit,
     viewModel: SessionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -84,7 +84,7 @@ fun SessionScreen(
                 Text("Ends", style = MaterialTheme.typography.titleMedium)
                 if (uiState.ends.isEmpty()) {
                     Text(
-                        "No ends yet - capture your first end below.",
+                        "No ends yet - add your first end below.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -109,10 +109,10 @@ fun SessionScreen(
             if (!uiState.ended) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
-                        onClick = { onCaptureEnd(viewModel.sessionId) },
+                        onClick = { onAddEnd(viewModel.sessionId) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Capture end")
+                        Text("Add end")
                     }
                     OutlinedButton(
                         onClick = { showFinishConfirm = true },

@@ -19,7 +19,8 @@ interface SessionRepository {
     fun getEndsForSession(sessionId: Long): Flow<List<EndEntity>>
     fun newPhotoFile(sessionId: Long, endNumber: Int): File
     fun importUploadedPhoto(sourceUri: Uri, destFile: File)
-    suspend fun createEnd(sessionId: Long, endNumber: Int, photoFile: File, capturedAt: Instant): Long
+    /** [photoFile] is null for an end entered manually with no photo. */
+    suspend fun createEnd(sessionId: Long, endNumber: Int, photoFile: File?, capturedAt: Instant): Long
     suspend fun updateCalibration(endId: Long, centerXPx: Float, centerYPx: Float, radiusPx: Float, confirmed: Boolean)
 
     fun getPointsForEnd(endId: Long): Flow<List<ArrowPointEntity>>
