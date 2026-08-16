@@ -1,0 +1,5 @@
+opencv-python>=4.9,<5
+numpy>=1.26,<2
+jupyter>=1.0
+ipywidgets>=8.0
+matplotlib>=3.8
