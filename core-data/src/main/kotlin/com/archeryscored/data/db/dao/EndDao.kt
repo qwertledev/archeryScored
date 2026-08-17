@@ -16,6 +16,9 @@ interface EndDao {
     @Query("SELECT * FROM ends WHERE id = :endId")
     suspend fun getById(endId: Long): EndEntity?
 
+    @Query("SELECT COUNT(*) FROM ends WHERE sessionId = :sessionId")
+    suspend fun countForSession(sessionId: Long): Int
+
     @Insert
     suspend fun insert(end: EndEntity): Long
 

@@ -40,22 +40,30 @@ class CaptureEndViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    fun newPhotoFile(): File {
-        val endNumber = endCount.value + 1
+    // Set by prepareCapture() and reused by onPhotoSaved() so the filename and the DB row always
+    // agree on the same end number, computed fresh from the DB rather than from endCount's snapshot
+    // (endCount is only for the "End N" title - it's fine if it's a beat behind, but the number
+    // actually saved never should be).
+    private var pendingEndNumber: Int? = null
+
+    suspend fun prepareCapture(): File {
+        val endNumber = repository.nextEndNumber(sessionId)
+        pendingEndNumber = endNumber
         return repository.newPhotoFile(sessionId, endNumber)
     }
 
     fun onPhotoSaved(file: File) {
         viewModelScope.launch {
             _isSaving.value = true
+            val endNumber = pendingEndNumber ?: repository.nextEndNumber(sessionId)
             runCatching {
-                val endNumber = endCount.value + 1
                 endCaptureUseCase.persistEnd(sessionId, endNumber, file)
             }.onSuccess { endId ->
                 _navigateToReview.value = endId
             }.onFailure {
                 _errorMessage.value = "Could not save that photo. Try again."
             }
+            pendingEndNumber = null
             _isSaving.value = false
         }
     }

@@ -18,12 +18,9 @@ import com.archeryscored.model.TargetFaces
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
@@ -78,10 +75,6 @@ class AddEndViewModel @Inject constructor(
 
     val sessionId: Long = checkNotNull(savedStateHandle["sessionId"])
 
-    val endCount: StateFlow<Int> = repository.getEndsForSession(sessionId)
-        .map { it.size }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-
     private val _isUploading = MutableStateFlow(false)
     val isUploading: StateFlow<Boolean> = _isUploading.asStateFlow()
 
@@ -112,7 +105,7 @@ class AddEndViewModel @Inject constructor(
         viewModelScope.launch {
             _isUploading.value = true
             runCatching {
-                val endNumber = endCount.value + 1
+                val endNumber = repository.nextEndNumber(sessionId)
                 val file = repository.newPhotoFile(sessionId, endNumber)
                 withContext(Dispatchers.IO) { repository.importUploadedPhoto(sourceUri, file) }
                 endCaptureUseCase.persistEnd(sessionId, endNumber, file)
@@ -159,7 +152,7 @@ class AddEndViewModel @Inject constructor(
         if (state.arrows.isEmpty() || state.isSaving) return
         viewModelScope.launch {
             _endEntry.value = state.copy(isSaving = true)
-            val endNumber = endCount.value + 1
+            val endNumber = repository.nextEndNumber(sessionId)
             val endId = repository.createEnd(sessionId, endNumber, null, Clock.System.now())
             val points = state.arrows.map { arrow ->
                 ArrowPointEntity(

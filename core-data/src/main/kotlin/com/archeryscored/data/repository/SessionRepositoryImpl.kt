@@ -49,6 +49,8 @@ class SessionRepositoryImpl(
 
     override fun getEndsForSession(sessionId: Long): Flow<List<EndEntity>> = endDao.getEndsForSession(sessionId)
 
+    override suspend fun nextEndNumber(sessionId: Long): Int = endDao.countForSession(sessionId) + 1
+
     override fun newPhotoFile(sessionId: Long, endNumber: Int): File =
         photoStorage.fileForEnd(sessionId, endNumber, Clock.System.now().toEpochMilliseconds())
 

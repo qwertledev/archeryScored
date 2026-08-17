@@ -17,6 +17,8 @@ interface SessionRepository {
     suspend fun deleteSession(sessionId: Long)
 
     fun getEndsForSession(sessionId: Long): Flow<List<EndEntity>>
+    /** Always a fresh DB read, never a cached/observed value - safe to call right before creating an end. */
+    suspend fun nextEndNumber(sessionId: Long): Int
     fun newPhotoFile(sessionId: Long, endNumber: Int): File
     fun importUploadedPhoto(sourceUri: Uri, destFile: File)
     /** [photoFile] is null for an end entered manually with no photo. */

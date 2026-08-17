@@ -36,7 +36,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -61,6 +63,7 @@ fun CaptureEndScreen(
     val navigateToReview by viewModel.navigateToReview.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(navigateToReview) {
         navigateToReview?.let { endId ->
@@ -143,21 +146,23 @@ fun CaptureEndScreen(
                             modifier = Modifier.align(Alignment.BottomCenter),
                             onClick = {
                                 val capture = imageCapture ?: return@FloatingActionButton
-                                val file = viewModel.newPhotoFile()
-                                val outputOptions = ImageCapture.OutputFileOptions.Builder(file).build()
-                                capture.takePicture(
-                                    outputOptions,
-                                    cameraExecutor,
-                                    object : ImageCapture.OnImageSavedCallback {
-                                        override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                                            viewModel.onPhotoSaved(file)
-                                        }
+                                coroutineScope.launch {
+                                    val file = viewModel.prepareCapture()
+                                    val outputOptions = ImageCapture.OutputFileOptions.Builder(file).build()
+                                    capture.takePicture(
+                                        outputOptions,
+                                        cameraExecutor,
+                                        object : ImageCapture.OnImageSavedCallback {
+                                            override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                                                viewModel.onPhotoSaved(file)
+                                            }
 
-                                        override fun onError(exception: ImageCaptureException) {
-                                            exception.printStackTrace()
+                                            override fun onError(exception: ImageCaptureException) {
+                                                exception.printStackTrace()
+                                            }
                                         }
-                                    }
-                                )
+                                    )
+                                }
                             }
                         ) {
                             Icon(Icons.Filled.PhotoCamera, contentDescription = "Capture end")

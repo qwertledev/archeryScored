@@ -30,6 +30,12 @@ and CV pipeline have not been exercised on-device yet. Before relying on this:
 - The manual-entry palette (Miss/1-9/10/X) is derived from the session's `RingConfig`, so it already
   adapts to any face's max score and whether it has an X-ring - but only the four standard WA sizes
   are actually selectable from New Session today, so it's only been exercised against those.
+- End numbers are always computed with a fresh DB read (`SessionRepository.nextEndNumber`) right
+  before an end is created, never from a cached/observed count - a `StateFlow` built with
+  `SharingStarted.WhileSubscribed` only starts collecting once something actually subscribes to it,
+  and `AddEndScreen` never displayed its end count, so that value silently stayed at its initial `0`
+  forever and every end got numbered 1. Worth remembering if a similar "current count" pattern shows
+  up again: don't derive save-time state from a `StateFlow` whose only subscriber is incidental UI.
 
 ## Navigation flow
 
@@ -37,8 +43,9 @@ and CV pipeline have not been exercised on-device yet. Before relying on this:
 grouping/progression charts, the end-by-end list, and an **Add end** button) → `Add End` (no camera/
 permission touched yet). This screen shows every way to record an end at once, top to bottom:
 
-- **Take a picture** / **Use a picture** buttons → camera or system Photo Picker → the same
-  auto-detect/`Review` pipeline either way (correct detected/tapped arrows, **Save end**)
+- **Camera** / **Gallery** buttons (side by side, half-width each, so they cost one compact row
+  instead of two full-width cards) → camera or system Photo Picker → the same auto-detect/`Review`
+  pipeline either way (correct detected/tapped arrows, **Save end**)
 - A blank target face diagram, embedded directly on the page above the number palette - tap where
   each arrow landed, drag to adjust, long-press to remove
 - A Miss-through-X quick-entry palette below the diagram, for when marking a position is overkill
