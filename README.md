@@ -35,25 +35,25 @@ and CV pipeline have not been exercised on-device yet. Before relying on this:
 
 `Home` → `New Session` (pick round/distance/face) → `Session` (per-session dashboard: total score,
 grouping/progression charts, the end-by-end list, and an **Add end** button) → `Add End` (no camera/
-permission touched yet). This screen always shows all the ways to record an end at once, no picking
-a mode first:
+permission touched yet). This screen shows every way to record an end at once, top to bottom:
 
-- **Take a picture** → `Capture` (camera only) → `Review` (correct detected/tapped arrows, **Save end**)
-- **Use a picture** → system Photo Picker, straight into the same auto-detect/`Review` pipeline
-- **Tap on a target** → `Diagram Entry` (a blank rendered target face, tap where each arrow landed) →
-  saves straight back to `Session` - no photo, but a real position, so it plots on the grouping chart
-- **Quick score entry** - a Miss-through-X palette embedded directly on the `Add End` screen itself
-  (not a separate destination), for when a photo/diagram is overkill and you just want the number in
+- **Take a picture** / **Use a picture** buttons → camera or system Photo Picker → the same
+  auto-detect/`Review` pipeline either way (correct detected/tapped arrows, **Save end**)
+- A blank target face diagram, embedded directly on the page above the number palette - tap where
+  each arrow landed, drag to adjust, long-press to remove
+- A Miss-through-X quick-entry palette below the diagram, for when marking a position is overkill
+  and you just want the number in
 
-All routes converge back on `Session`. Quick/numeric entries have no photo and no arrow position -
-they count toward the total score and the progression chart, but are skipped by the grouping chart
-(which plots position, not just score) since there's no position to plot. Diagram-tap ends *do* have
-a position (relative to the diagram's own fixed circle) and do show up there.
+Diagram taps and quick-entry taps build the **same** end and share the same arrow list/cap - tap the
+diagram for some arrows and the palette for others if you like, they're just two ways to add to one
+list. **Save end** (no separate Review step - there's no photo to correct) saves straight back to
+`Session`. Arrows placed via the diagram carry a real position (relative to the diagram's own fixed
+circle) and show up on the grouping chart; quick-entry arrows have a score only and are skipped there.
 
 Every end is capped at `MAX_ARROWS_PER_END` (3, in `core-model/.../EndRules.kt`), enforced the same
-way everywhere an arrow gets added - the quick-entry palette disables once full, Diagram Entry and
-Review's tap-to-add both stop accepting new taps, and CV auto-detection keeps only the top 3 results
-by confidence if it finds more (false positives being far likelier than a genuine fourth arrow).
+way everywhere an arrow gets added - the diagram and the quick-entry palette both stop accepting new
+arrows once full (shared cap), same for Review's tap-to-add, and CV auto-detection keeps only the top
+3 results by confidence if it finds more (false positives being far likelier than a genuine 4th arrow).
 
 On `Review`, the calibration circle is never a separate "step" - it's always visible from the moment
 the photo loads (auto-detected, previously saved, or a computed default centered on the photo), with

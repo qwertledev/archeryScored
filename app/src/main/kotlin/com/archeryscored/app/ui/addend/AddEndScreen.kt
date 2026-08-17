@@ -22,7 +22,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Button
@@ -52,23 +51,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.archeryscored.app.ui.common.TargetDiagramInput
 import com.archeryscored.model.MAX_ARROWS_PER_END
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEndScreen(
     onTakePicture: (sessionId: Long) -> Unit,
-    onEnterViaDiagram: (sessionId: Long) -> Unit,
     onEndCaptured: (sessionId: Long, endId: Long) -> Unit,
-    onQuickEntrySaved: (sessionId: Long) -> Unit,
+    onEndEntrySaved: (sessionId: Long) -> Unit,
     onBack: () -> Unit,
     viewModel: AddEndViewModel = hiltViewModel()
 ) {
     val isUploading by viewModel.isUploading.collectAsState()
     val navigateToReview by viewModel.navigateToReview.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
-    val quickEntry by viewModel.quickEntry.collectAsState()
-    val quickEntrySaved by viewModel.quickEntrySaved.collectAsState()
+    val endEntry by viewModel.endEntry.collectAsState()
+    val endEntrySaved by viewModel.endEntrySaved.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(navigateToReview) {
@@ -78,8 +77,8 @@ fun AddEndScreen(
         }
     }
 
-    LaunchedEffect(quickEntrySaved) {
-        if (quickEntrySaved) onQuickEntrySaved(viewModel.sessionId)
+    LaunchedEffect(endEntrySaved) {
+        if (endEntrySaved) onEndEntrySaved(viewModel.sessionId)
     }
 
     LaunchedEffect(errorMessage) {
@@ -118,11 +117,10 @@ fun AddEndScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "Photograph or mark the target",
+                "Have a photo instead?",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
             ChooserCard(
                 icon = Icons.Filled.PhotoCamera,
                 title = "Take a picture",
@@ -137,19 +135,12 @@ fun AddEndScreen(
                     uploadLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }
             )
-            ChooserCard(
-                icon = Icons.Filled.GpsFixed,
-                title = "Tap on a target",
-                subtitle = "Mark where each arrow landed on a blank target face - no photo",
-                onClick = { onEnterViaDiagram(viewModel.sessionId) }
-            )
 
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
 
-            Text("Or enter scores directly", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
-                if (quickEntry.canAddMore) {
-                    "Tap a value for each arrow (up to $MAX_ARROWS_PER_END per end)."
+                if (endEntry.canAddMore) {
+                    "Tap where each arrow landed, or use the values below (up to $MAX_ARROWS_PER_END per end)."
                 } else {
                     "$MAX_ARROWS_PER_END arrows recorded. Remove one below to change it."
                 },
@@ -157,23 +148,34 @@ fun AddEndScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
+            TargetDiagramInput(
+                ringConfig = endEntry.ringConfig,
+                points = endEntry.diagramPoints,
+                onAddPoint = viewModel::addDiagramArrow,
+                onMovePoint = viewModel::moveDiagramArrow,
+                onDeletePoint = viewModel::removeArrow,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Text("Or tap a value directly", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
             QuickEntryPalette(
-                palette = quickEntry.palette,
-                enabled = quickEntry.canAddMore,
+                palette = endEntry.palette,
+                enabled = endEntry.canAddMore,
                 onSelect = viewModel::addQuickEntry
             )
 
-            if (quickEntry.entries.isNotEmpty()) {
+            if (endEntry.arrows.isNotEmpty()) {
                 Text(
-                    "${quickEntry.entries.size} arrow${if (quickEntry.entries.size == 1) "" else "s"} · ${quickEntry.total} points",
+                    "${endEntry.arrows.size} arrow${if (endEntry.arrows.size == 1) "" else "s"} · ${endEntry.total} points",
                     style = MaterialTheme.typography.titleMedium
                 )
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(quickEntry.entries.withIndex().toList(), key = { it.index }) { (index, entry) ->
+                    items(endEntry.arrows, key = { it.id }) { arrow ->
                         InputChip(
                             selected = false,
-                            onClick = { viewModel.removeQuickEntryAt(index) },
-                            label = { Text(entry.label) },
+                            onClick = { viewModel.removeArrow(arrow.id) },
+                            label = { Text(arrow.label) },
                             trailingIcon = { Icon(Icons.Filled.Close, contentDescription = "Remove") }
                         )
                     }
@@ -181,8 +183,8 @@ fun AddEndScreen(
             }
 
             Button(
-                onClick = viewModel::saveQuickEntry,
-                enabled = quickEntry.entries.isNotEmpty() && !quickEntry.isSaving,
+                onClick = viewModel::saveEndEntry,
+                enabled = endEntry.arrows.isNotEmpty() && !endEntry.isSaving,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Save end")

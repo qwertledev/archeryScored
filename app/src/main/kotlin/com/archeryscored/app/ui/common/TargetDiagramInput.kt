@@ -1,4 +1,4 @@
-package com.archeryscored.app.ui.diagramentry
+package com.archeryscored.app.ui.common
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -11,11 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import com.archeryscored.app.ui.common.ArrowMarker
-import com.archeryscored.app.ui.common.MarkerPoint
-import com.archeryscored.app.ui.common.drawTargetFace
-import com.archeryscored.app.ui.common.touchOffsetPx
 import com.archeryscored.model.RingConfig
+
+data class DiagramPoint(val id: Long, val xNormalized: Float, val yNormalized: Float, val score: Int, val isX: Boolean)
 
 /**
  * A blank target face the archer taps directly to mark where each arrow landed - no photo involved.

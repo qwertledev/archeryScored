@@ -1,15 +1,19 @@
 package com.archeryscored.app.ui.addend
 
 import android.net.Uri
+import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.archeryscored.app.capture.EndCaptureUseCase
+import com.archeryscored.app.ui.common.DiagramPoint
 import com.archeryscored.data.db.entity.ArrowPointEntity
 import com.archeryscored.data.repository.SessionRepository
 import com.archeryscored.model.MAX_ARROWS_PER_END
+import com.archeryscored.model.Point2D
 import com.archeryscored.model.PointSource
 import com.archeryscored.model.RingConfig
+import com.archeryscored.model.ScoreCalculator
 import com.archeryscored.model.TargetFaces
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -29,13 +33,30 @@ data class QuickScoreValue(val score: Int, val isX: Boolean) {
     val label: String get() = if (isX) "X" else if (score == 0) "M" else score.toString()
 }
 
-data class QuickEntryState(
+/** One arrow for the end being built here. [xNormalized]/[yNormalized] are only set for arrows placed by tapping the diagram. */
+data class EndArrow(
+    val id: Long,
+    val score: Int,
+    val isX: Boolean,
+    val xNormalized: Float? = null,
+    val yNormalized: Float? = null
+) {
+    val label: String get() = if (isX) "X" else if (score == 0) "M" else score.toString()
+}
+
+data class EndEntryState(
     val ringConfig: RingConfig = TargetFaces.WA_122CM.ringConfig,
-    val entries: List<QuickScoreValue> = emptyList(),
+    val arrows: List<EndArrow> = emptyList(),
     val isSaving: Boolean = false
 ) {
-    val total: Int get() = entries.sumOf { it.score }
-    val canAddMore: Boolean get() = entries.size < MAX_ARROWS_PER_END
+    val total: Int get() = arrows.sumOf { it.score }
+    val canAddMore: Boolean get() = arrows.size < MAX_ARROWS_PER_END
+    val diagramPoints: List<DiagramPoint>
+        get() = arrows.mapNotNull { a ->
+            val x = a.xNormalized ?: return@mapNotNull null
+            val y = a.yNormalized ?: return@mapNotNull null
+            DiagramPoint(a.id, x, y, a.score, a.isX)
+        }
     /** Best score first: X (if this face has one), then max score down to 1, then Miss. */
     val palette: List<QuickScoreValue>
         get() {
@@ -70,18 +91,19 @@ class AddEndViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    private val _quickEntry = MutableStateFlow(QuickEntryState())
-    val quickEntry: StateFlow<QuickEntryState> = _quickEntry.asStateFlow()
+    private var nextLocalId = -1L
+    private val _endEntry = MutableStateFlow(EndEntryState())
+    val endEntry: StateFlow<EndEntryState> = _endEntry.asStateFlow()
 
-    private val _quickEntrySaved = MutableStateFlow(false)
-    val quickEntrySaved: StateFlow<Boolean> = _quickEntrySaved.asStateFlow()
+    private val _endEntrySaved = MutableStateFlow(false)
+    val endEntrySaved: StateFlow<Boolean> = _endEntrySaved.asStateFlow()
 
     init {
         viewModelScope.launch {
             val session = repository.getSession(sessionId).first()
             val face = session?.let { runCatching { TargetFaces.byId(it.targetFaceTypeId) }.getOrNull() }
             if (face != null) {
-                _quickEntry.value = _quickEntry.value.copy(ringConfig = face.ringConfig)
+                _endEntry.value = _endEntry.value.copy(ringConfig = face.ringConfig)
             }
         }
     }
@@ -103,38 +125,55 @@ class AddEndViewModel @Inject constructor(
         }
     }
 
-    fun addQuickEntry(value: QuickScoreValue) {
-        val state = _quickEntry.value
+    fun addDiagramArrow(normalized: Offset) {
+        val state = _endEntry.value
         if (!state.canAddMore) return
-        _quickEntry.value = state.copy(entries = state.entries + value)
+        val scored = ScoreCalculator.scoreNormalized(Point2D(normalized.x, normalized.y), state.ringConfig)
+        val arrow = EndArrow(nextLocalId--, scored.score, scored.isX, normalized.x, normalized.y)
+        _endEntry.value = state.copy(arrows = state.arrows + arrow)
     }
 
-    fun removeQuickEntryAt(index: Int) {
-        _quickEntry.value = _quickEntry.value.copy(
-            entries = _quickEntry.value.entries.filterIndexed { i, _ -> i != index }
+    fun moveDiagramArrow(id: Long, normalized: Offset) {
+        val state = _endEntry.value
+        val scored = ScoreCalculator.scoreNormalized(Point2D(normalized.x, normalized.y), state.ringConfig)
+        _endEntry.value = state.copy(
+            arrows = state.arrows.map {
+                if (it.id == id) it.copy(score = scored.score, isX = scored.isX, xNormalized = normalized.x, yNormalized = normalized.y)
+                else it
+            }
         )
     }
 
-    fun saveQuickEntry() {
-        val state = _quickEntry.value
-        if (state.entries.isEmpty() || state.isSaving) return
+    fun addQuickEntry(value: QuickScoreValue) {
+        val state = _endEntry.value
+        if (!state.canAddMore) return
+        _endEntry.value = state.copy(arrows = state.arrows + EndArrow(nextLocalId--, value.score, value.isX))
+    }
+
+    fun removeArrow(id: Long) {
+        _endEntry.value = _endEntry.value.copy(arrows = _endEntry.value.arrows.filterNot { it.id == id })
+    }
+
+    fun saveEndEntry() {
+        val state = _endEntry.value
+        if (state.arrows.isEmpty() || state.isSaving) return
         viewModelScope.launch {
-            _quickEntry.value = state.copy(isSaving = true)
+            _endEntry.value = state.copy(isSaving = true)
             val endNumber = endCount.value + 1
             val endId = repository.createEnd(sessionId, endNumber, null, Clock.System.now())
-            val points = state.entries.map { entry ->
+            val points = state.arrows.map { arrow ->
                 ArrowPointEntity(
                     endId = endId,
-                    xNormalized = null,
-                    yNormalized = null,
-                    score = entry.score,
-                    isX = entry.isX,
+                    xNormalized = arrow.xNormalized,
+                    yNormalized = arrow.yNormalized,
+                    score = arrow.score,
+                    isX = arrow.isX,
                     source = PointSource.MANUAL_ADDED
                 )
             }
             repository.saveArrowPoints(endId, points)
-            _quickEntry.value = _quickEntry.value.copy(isSaving = false)
-            _quickEntrySaved.value = true
+            _endEntry.value = _endEntry.value.copy(isSaving = false)
+            _endEntrySaved.value = true
         }
     }
 
